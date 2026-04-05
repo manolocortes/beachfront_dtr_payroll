@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="600.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.beachfront.gui_demo.ProjectsController">
+   <bottom>
+      <AnchorPane prefHeight="50.0" prefWidth="1000.0" styleClass="top-bottom-panel" stylesheets="@style.css" BorderPane.alignment="CENTER">
+         <children>
+            <Button fx:id="projectsButton" layoutX="395.0" layoutY="10.0" mnemonicParsing="false" onAction="#switchToProjects" text="Projects">
+               <font>
+                  <Font name="System Bold" size="13.0" />
+               </font>
+            </Button>
+            <Button fx:id="workersButton" layoutX="550.0" layoutY="10.0" mnemonicParsing="false" onAction="#switchToWorkers" stylesheets="@style.css" text="Workers">
+               <font>
+                  <Font name="System Bold" size="13.0" />
+               </font>
+            </Button>
+         </children>
+      </AnchorPane>
+   </bottom>
+   <top>
+      <AnchorPane prefHeight="50.0" prefWidth="1000.0" styleClass="top-bottom-panel" stylesheets="@style.css" BorderPane.alignment="CENTER">
+         <children>
+            <Label layoutX="14.0" layoutY="3.0" prefHeight="44.0" prefWidth="366.0" text="BEACHFRONT - PROJECTS" textFill="WHITE">
+               <font>
+                  <Font name="System Bold" size="27.0" />
+               </font>
+            </Label>
+         </children>
+      </AnchorPane>
+   </top>
+   <center>
+      <AnchorPane prefHeight="496.0" prefWidth="1001.0" BorderPane.alignment="CENTER" />
+   </center>
+</BorderPane>
