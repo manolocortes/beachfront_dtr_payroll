@@ -8,6 +8,8 @@ module com.beachfront.gui_demo {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
+    requires java.logging;
+    requires java.sql;
 
     opens com.beachfront.gui_demo to javafx.fxml;
     exports com.beachfront.gui_demo;

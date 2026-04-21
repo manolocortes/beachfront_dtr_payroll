@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="1000.0" prefWidth="1600.0" stylesheets="@style.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1">
+   <top>
+      <HBox minHeight="30.0" prefHeight="30.0" prefWidth="600.0" styleClass="nav-bar" stylesheets="@style.css" BorderPane.alignment="CENTER">
+         <children>
+            <Label alignment="CENTER" prefHeight="52.0" prefWidth="110.0" styleClass="nav-title" stylesheets="@style.css" text="Beachfront" textAlignment="CENTER" />
+            <Region prefHeight="52.0" prefWidth="269.0" HBox.hgrow="ALWAYS" />
+            <ToggleButton mnemonicParsing="false" prefHeight="56.0" prefWidth="95.0" styleClass="nav-btn" stylesheets="@style.css" text="Projects">
+               <font>
+                  <Font size="10.0" />
+               </font>
+            </ToggleButton>
+            <ToggleButton mnemonicParsing="false" prefHeight="56.0" prefWidth="95.0" styleClass="nav-btn" stylesheets="@style.css" text="Workers">
+               <font>
+                  <Font size="10.0" />
+               </font>
+            </ToggleButton>
+            <ToggleButton mnemonicParsing="false" prefHeight="56.0" prefWidth="95.0" styleClass="nav-btn" stylesheets="@style.css" text="Payroll">
+               <font>
+                  <Font size="10.0" />
+               </font>
+            </ToggleButton>
+            <ToggleButton mnemonicParsing="false" prefHeight="56.0" prefWidth="95.0" styleClass="nav-btn" stylesheets="@style.css" text="History">
+               <font>
+                  <Font size="10.0" />
+               </font>
+            </ToggleButton>
+         </children>
+      </HBox>
+   </top>
+   <center>
+      <StackPane prefHeight="150.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+         <children>
+            <VBox fx:id="projectsPane" spacing="15" visible="true">
+               <padding>
+                  <Insets bottom="20" left="20" right="20" top="20" />
+               </padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10">
+                     <children>
+                        <Label styleClass="page-title" text="Projects" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <TextField fx:id="projectSearch" prefWidth="200" promptText="🔍 Search..." styleClass="search-field" />
+                        <Button onAction="#openNewProject" styleClass="btn-primary" text="+ New Project">
+                           <stylesheets>
+                              <URL value="@style.css" />
+                           </stylesheets></Button>
+                     </children>
+                  </HBox>
+                  <TableView fx:id="projectTable" VBox.vgrow="ALWAYS">
+                     <columns>
+                        <TableColumn fx:id="colProjId" prefWidth="50" text="ID" />
+                        <TableColumn fx:id="colProjName" prefWidth="200" text="Project Name" />
+                        <TableColumn fx:id="colProjClient" prefWidth="160" text="Client" />
+                        <TableColumn fx:id="colProjLocation" prefWidth="150" text="Location" />
+                        <TableColumn fx:id="colProjStart" prefWidth="110" text="Start Date" />
+                        <TableColumn fx:id="colProjEnd" prefWidth="110" text="End Date" />
+                        <TableColumn fx:id="colProjStatus" prefWidth="90" text="Status" />
+                        <TableColumn fx:id="colProjActions" prefWidth="160" text="Actions" />
+                     </columns>
+                  </TableView>
+               </children>
+            </VBox>
+         </children>
+      </StackPane>
+   </center>
+</BorderPane>
