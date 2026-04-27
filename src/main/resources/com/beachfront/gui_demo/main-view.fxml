@@ -3,6 +3,7 @@
 <?import java.net.URL?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -73,6 +74,34 @@
                         <TableColumn fx:id="colProjEnd" prefWidth="110" text="End Date" />
                         <TableColumn fx:id="colProjStatus" prefWidth="90" text="Status" />
                         <TableColumn fx:id="colProjActions" prefWidth="160" text="Actions" />
+                     </columns>
+                  </TableView>
+               </children>
+            </VBox>
+            <VBox fx:id="workersPane" spacing="15" visible="false">
+               <padding>
+                  <Insets bottom="20" left="20" right="20" top="20" />
+               </padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="10">
+                     <children>
+                        <Label styleClass="page-title" text="Workers" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <TextField fx:id="workerSearch" prefWidth="200" promptText="🔍 Search..." styleClass="search-field" />
+                        <CheckBox fx:id="showInactiveWorkers" text="Show Inactive" />
+                        <Button onAction="#openNewWorker" styleClass="btn-primary" text="+ Add Worker" />
+                     </children>
+                  </HBox>
+                  <TableView fx:id="workerTable" VBox.vgrow="ALWAYS">
+                     <columns>
+                        <TableColumn fx:id="colWId" prefWidth="50" text="ID" />
+                        <TableColumn fx:id="colWName" prefWidth="180" text="Name" />
+                        <TableColumn fx:id="colWPosition" prefWidth="150" text="Position" />
+                        <TableColumn fx:id="colWRate" prefWidth="110" text="Daily Rate" />
+                        <TableColumn fx:id="colWContact" prefWidth="130" text="Contact" />
+                        <TableColumn fx:id="colWAddress" prefWidth="200" text="Address" />
+                        <TableColumn fx:id="colWStatus" prefWidth="70" text="Active" />
+                        <TableColumn fx:id="colWActions" prefWidth="160" text="Actions" />
                      </columns>
                   </TableView>
                </children>
