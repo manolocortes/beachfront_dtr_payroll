@@ -1,16 +1,19 @@
-module com.beachfront.gui_demo {
+module com.payroll {
     requires javafx.controls;
     requires javafx.fxml;
-    requires javafx.web;
-
-    requires com.dlsc.formsfx;
-    requires net.synedra.validatorfx;
-    requires org.kordamp.ikonli.javafx;
-    requires org.kordamp.bootstrapfx.core;
-    requires eu.hansolo.tilesfx;
-    requires java.logging;
     requires java.sql;
+    requires org.xerial.sqlitejdbc;
+    requires kernel;
+    requires layout;
+    requires io;
 
-    opens com.beachfront.gui_demo to javafx.fxml;
-    exports com.beachfront.gui_demo;
+    opens com.payroll to javafx.fxml;
+    opens com.payroll.controller to javafx.fxml;
+    opens com.payroll.model to javafx.base;
+
+    exports com.payroll;
+    exports com.payroll.controller;
+    exports com.payroll.model;
+    exports com.payroll.dao;
+    exports com.payroll.service;
 }

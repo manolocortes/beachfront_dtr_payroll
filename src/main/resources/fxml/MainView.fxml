@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.payroll.controller.MainController"
+            styleClass="root-pane">
+
+    <!-- TOP NAV BAR -->
+    <top>
+        <HBox styleClass="nav-bar" spacing="0" alignment="CENTER_LEFT">
+            <Label text="Payroll Manager" styleClass="nav-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <ToggleButton fx:id="btnProjects" text="Projects" styleClass="nav-btn" onAction="#showProjects" selected="true"/>
+            <ToggleButton fx:id="btnWorkers"  text="Workers"  styleClass="nav-btn" onAction="#showWorkers"/>
+            <ToggleButton fx:id="btnPayroll"  text="New Payroll" styleClass="nav-btn" onAction="#showPayroll"/>
+            <ToggleButton fx:id="btnHistory"  text="Payroll History" styleClass="nav-btn" onAction="#showHistory"/>
+        </HBox>
+    </top>
+
+    <center>
+        <StackPane fx:id="contentStack" styleClass="content-area">
+
+            <!-- ═══════════════ PROJECTS ═══════════════ -->
+            <VBox fx:id="projectsPane" visible="true" spacing="14">
+                <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+                <VBox spacing="4">
+                    <Label text="Projects" styleClass="page-title"/>
+                    <Label text="Manage the construction projects you run payroll for." styleClass="page-subtitle"/>
+                </VBox>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <TextField fx:id="projectSearch" promptText="Search by project name or client…" styleClass="search-field" prefWidth="320"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="+ New Project" styleClass="btn-primary" onAction="#openNewProject"/>
+                </HBox>
+                <TableView fx:id="projectTable" VBox.vgrow="ALWAYS">
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="colProjId"       text="ID"           prefWidth="60"/>
+                        <TableColumn fx:id="colProjName"     text="Project Name" prefWidth="220"/>
+                        <TableColumn fx:id="colProjClient"   text="Client"       prefWidth="180"/>
+                        <TableColumn fx:id="colProjLocation" text="Location"     prefWidth="160"/>
+                        <TableColumn fx:id="colProjStart"    text="Start Date"   prefWidth="120"/>
+                        <TableColumn fx:id="colProjEnd"      text="End Date"     prefWidth="120"/>
+                        <TableColumn fx:id="colProjStatus"   text="Status"       prefWidth="110"/>
+                        <TableColumn fx:id="colProjActions"  text="Actions"      prefWidth="170"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <!-- ═══════════════ WORKERS ═══════════════ -->
+            <VBox fx:id="workersPane" visible="false" spacing="14">
+                <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+                <VBox spacing="4">
+                    <Label text="Workers" styleClass="page-title"/>
+                    <Label text="Manage your roster of workers and their daily rates." styleClass="page-subtitle"/>
+                </VBox>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <TextField fx:id="workerSearch" promptText="Search by name or position…" styleClass="search-field" prefWidth="320"/>
+                    <CheckBox fx:id="showInactiveWorkers" text="Show inactive workers"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="+ Add Worker" styleClass="btn-primary" onAction="#openNewWorker"/>
+                </HBox>
+                <TableView fx:id="workerTable" VBox.vgrow="ALWAYS">
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="colWId"       text="ID"         prefWidth="60"/>
+                        <TableColumn fx:id="colWName"     text="Name"       prefWidth="260"/>
+                        <TableColumn fx:id="colWPosition" text="Position"   prefWidth="220"/>
+                        <TableColumn fx:id="colWRate"     text="Daily Rate" prefWidth="140"/>
+                        <TableColumn fx:id="colWStatus"   text="Status"     prefWidth="110"/>
+                        <TableColumn fx:id="colWActions"  text="Actions"    prefWidth="170"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <!-- ═══════════════ PAYROLL ═══════════════ -->
+            <VBox fx:id="payrollPane" visible="false" spacing="14">
+                <padding><Insets top="24" right="24" bottom="16" left="24"/></padding>
+
+                <VBox spacing="4">
+                    <Label text="Create Payroll" styleClass="page-title"/>
+                    <Label text="Fill in the pay period details, add workers, and mark their attendance for the week." styleClass="page-subtitle"/>
+                </VBox>
+
+                <!-- Step 1: Pay period details -->
+                <VBox styleClass="form-card" spacing="10">
+                    <Label text="1. Pay Period Details" styleClass="form-card-title"/>
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Project *" styleClass="form-label"/>
+                            <ComboBox fx:id="payrollProject" maxWidth="Infinity"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Period Start *" styleClass="form-label"/>
+                            <DatePicker fx:id="payrollPeriodStart" maxWidth="Infinity"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Period End *" styleClass="form-label"/>
+                            <DatePicker fx:id="payrollPeriodEnd" maxWidth="Infinity"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Pay Date" styleClass="form-label"/>
+                            <DatePicker fx:id="payrollPayDate" maxWidth="Infinity"/>
+                        </VBox>
+                    </HBox>
+                    <HBox spacing="16">
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Prepared By" styleClass="form-label"/>
+                            <TextField fx:id="payrollPreparedBy" maxWidth="Infinity"/>
+                        </VBox>
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <Label text="Checked / Approved By" styleClass="form-label"/>
+                            <TextField fx:id="payrollApprovedBy" maxWidth="Infinity"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <!-- Step 2: Workers -->
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="2. Worker Attendance" styleClass="form-card-title"/>
+                    <Label fx:id="workerCountLabel" text="0 workers" styleClass="worker-count-badge"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Save as Default Crew" styleClass="btn-secondary" onAction="#saveAsDefaultCrew"/>
+                    <Button text="Add Project Crew" styleClass="btn-secondary" onAction="#importProjectWorkers"/>
+                    <Button text="+ Add Workers" styleClass="btn-primary" onAction="#addWorkerToPayroll"/>
+                </HBox>
+
+                <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true" styleClass="attendance-scroll">
+                    <VBox fx:id="attendanceContainer" spacing="12">
+                        <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+                        <Label fx:id="emptyStateLabel" text="No workers added yet. Click &quot;Add Workers&quot; to select from your roster, or &quot;Add Project Crew&quot; to load this project's assigned workers." styleClass="empty-state"/>
+                    </VBox>
+                </ScrollPane>
+
+                <!-- Step 3: Totals + actions -->
+                <HBox alignment="CENTER" spacing="16" styleClass="totals-bar">
+                    <Label text="3." styleClass="total-step-label"/>
+                    <Label text="Total Pay:" styleClass="total-label"/>
+                    <Label fx:id="totalNetLabel" text="₱0.00" styleClass="total-value-accent"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Save Draft" styleClass="btn-secondary-dark" onAction="#savePayrollDraft"/>
+                    <Button text="Finalize Payroll" styleClass="btn-success" onAction="#finalizePayroll"/>
+                    <Button text="Export to PDF" styleClass="btn-primary" onAction="#exportPayrollPdf"/>
+                </HBox>
+            </VBox>
+
+            <!-- ═══════════════ HISTORY ═══════════════ -->
+            <VBox fx:id="historyPane" visible="false" spacing="14">
+                <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+                <VBox spacing="4">
+                    <Label text="Payroll History" styleClass="page-title"/>
+                    <Label text="View, edit, or export payrolls you've created." styleClass="page-subtitle"/>
+                </VBox>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <ComboBox fx:id="historyProjectFilter" promptText="All Projects" prefWidth="220"/>
+                    <TextField fx:id="historySearch" promptText="Search by project…" styleClass="search-field" prefWidth="280"/>
+                </HBox>
+                <TableView fx:id="historyTable" VBox.vgrow="ALWAYS">
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="colHisId"       text="#"           prefWidth="70"/>
+                        <TableColumn fx:id="colHisProject"  text="Project"     prefWidth="210"/>
+                        <TableColumn fx:id="colHisPeriod"   text="Pay Period"  prefWidth="220"/>
+                        <TableColumn fx:id="colHisPayDate"  text="Pay Date"    prefWidth="130"/>
+                        <TableColumn fx:id="colHisTotal"    text="Total Pay"   prefWidth="140"/>
+                        <TableColumn fx:id="colHisPrepared" text="Prepared By" prefWidth="160"/>
+                        <TableColumn fx:id="colHisStatus"   text="Status"      prefWidth="110"/>
+                        <TableColumn fx:id="colHisActions"  text="Actions"     prefWidth="270"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+        </StackPane>
+    </center>
+
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="10">
+            <Label fx:id="statusLabel" text="Ready" styleClass="status-text"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="dbPathLabel" text="" styleClass="status-dim"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
