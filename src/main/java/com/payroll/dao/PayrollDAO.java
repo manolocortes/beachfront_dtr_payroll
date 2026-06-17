@@ -45,18 +45,19 @@ public class PayrollDAO {
 
     public List<PayrollEntry> findEntries(int payrollId) throws SQLException {
         List<PayrollEntry> list = new ArrayList<>();
-        try (PreparedStatement ps = conn.prepareStatement("SELECT pe.*,w.name as wname,w.position FROM payroll_entries pe JOIN workers w ON pe.worker_id=w.id WHERE pe.payroll_id=? ORDER BY w.name")) {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT pe.*,w.name as wname,w.position FROM payroll_entries pe JOIN workers w ON pe.worker_id=w.id WHERE pe.payroll_id=? ORDER BY pe.sort_order ASC, pe.id ASC")) {
             ps.setInt(1,payrollId);
             try (ResultSet rs = ps.executeQuery()) { while (rs.next()) list.add(mapEntry(rs)); }
         } return list;
     }
 
     private void insertEntry(PayrollEntry e) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("INSERT INTO payroll_entries(payroll_id,worker_id,daily_rate,overtime_rate,gross_pay,net_pay,d1,d2,d3,d4,d5,d6,d7) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ps = conn.prepareStatement("INSERT INTO payroll_entries(payroll_id,worker_id,daily_rate,overtime_rate,gross_pay,net_pay,d1,d2,d3,d4,d5,d6,d7,sort_order) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1,e.getPayrollId());ps.setInt(2,e.getWorkerId());ps.setDouble(3,e.getDailyRate());
             ps.setDouble(4,e.getOvertimeRate());ps.setDouble(5,e.getGrossPay());ps.setDouble(6,e.getNetPay());
             List<DayAttendance> days = e.getDayAttendance();
             for (int i=0;i<7;i++) { DayAttendance da=i<days.size()?days.get(i):new DayAttendance(i); ps.setString(7+i,da.serialize()); }
+            ps.setInt(14,e.getSortOrder());
             ps.executeUpdate();
             try(ResultSet k=ps.getGeneratedKeys()){if(k.next())e.setId(k.getInt(1));}
         }

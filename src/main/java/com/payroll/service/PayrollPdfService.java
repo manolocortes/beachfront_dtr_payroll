@@ -88,7 +88,7 @@ public class PayrollPdfService {
     private static final float X_AMOUNT_RIGHT = 764.0f;  // right boundary of AMOUNT col minus 3pt padding
 
     // Line inset padding on each end of horizontal absence lines
-    private static final float LINE_INSET = 4.0f;
+    private static final float LINE_INSET = 2.5f;
 
     // ── Data row Y centers in display space (22 rows) ─────────────────────────
     private static final float[] ROW_Y = {
@@ -236,10 +236,11 @@ public class PayrollPdfService {
 
             String label;
             if (periodStart != null) {
-                // Find the date for this day-of-week slot within the week of periodStart
-                // The period starts on whichever day periodStart falls; map slot d to that date
+                // Compute the actual date for slot d by advancing from periodStart
                 LocalDate date = periodStart.plusDays(d);
-                label = DAY_NAMES[d] + "(" + date.format(DAY_DATE_FMT) + ")";
+                // Derive the day name from the actual date so it matches regardless of start day
+                int dowIndex = date.getDayOfWeek().getValue() - 1; // MON=0 .. SUN=6
+                label = DAY_NAMES[dowIndex] + "(" + date.format(DAY_DATE_FMT) + ")";
             } else {
                 label = DAY_NAMES[d];
             }
@@ -316,8 +317,8 @@ public class PayrollPdfService {
             double tOT   = pageEntries.stream().mapToDouble(PayrollEntry::getOvertimeHours).sum();
             double tNet  = pageEntries.stream().mapToDouble(PayrollEntry::getNetPay).sum();
             put(c, bold, 10.5f,  "TOTAL",        12f,          ty);
-            putC(c, bold, 10.5f, fmtN(tDays),   X_TOTAL_DAYS, ty, 34f);
-            putC(c, bold, 10.5f, fmtN(tOT),     X_TOTAL_OT,   ty, 34f);
+            //putC(c, bold, 10.5f, fmtN(tDays),   X_TOTAL_DAYS, ty, 34f);
+            //putC(c, bold, 10.5f, fmtN(tOT),     X_TOTAL_OT,   ty, 34f);
             putR(c, bold, 10.5f, fmtM(tNet),    X_AMOUNT_RIGHT, ty);
         }
     }

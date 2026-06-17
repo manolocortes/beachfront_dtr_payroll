@@ -33,31 +33,33 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
-                        <phase>package</phase><goals><goal>shade</goal></goals>
-                        <configuration>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.payroll.Launcher</mainClass>
-                                </transformer>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                            </transformers>
-                            <filters>
-                                <filter>
-                                    <artifact>*:*</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
-                                    </excludes>
-                                </filter>
-                            </filters>
-                        </configuration>
+                        <id>copy-deps</id>
+			<phase>prepare-package</phase>
+			<goals><goal>copy-dependencies</goal></goals>
+			<configuration>
+				<outputDirectory>${project.build.directory}/libs</outputDirectory>
+				<includeScope>runtime</includeScope>
+			</configuration>
                     </execution>
                 </executions>
+            </plugin>
+	    <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+		<configuration>
+			<archive>
+				<manifest>
+					<mainClass>com.payroll.Main</mainClass>
+					<addClasspath>true</addClasspath>
+					<classpathPrefix>libs/</classpathPrefix>
+				</manifest>
+			</archive>
+		</configuration>
             </plugin>
         </plugins>
     </build>

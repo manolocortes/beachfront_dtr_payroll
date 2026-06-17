@@ -1,13 +1,1 @@
-jpackage ^
-  --type exe ^
-  --name "Payroll App" ^
-  --app-version 1.0 ^
-  --input target ^
-  --main-jar payroll-app-1.0-SNAPSHOT.jar ^
-  --main-class com.payroll.Main ^
-  --module-path "C:\javafx-sdk-21.0.2\lib" ^
-  --add-modules javafx.controls,javafx.fxml ^
-  --win-shortcut ^
-  --win-menu ^
-  --win-dir-chooser ^
-  --dest output
+"C:\Program Files\Java\jdk-26.0.1\bin\jpackage.exe"   --type exe ^  --name "Payroll App" ^  --app-version 1.0 ^  --input target ^  --main-jar payroll-app-1.0-SNAPSHOT.jar ^  --main-class com.payroll.Main ^  --module-path "C:\Program Files\Java\javafx-sdk-21.0.11\lib" ^  --add-modules javafx.controls,javafx.fxml ^  --win-shortcut ^  --win-menu ^  --win-dir-chooser ^  --dest output

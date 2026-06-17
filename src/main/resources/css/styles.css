@@ -63,6 +63,15 @@
 }
 .btn-danger-sm:hover { -fx-background-color:#fff5f5; }
 
+.btn-move {
+    -fx-background-color:transparent; -fx-text-fill:#718096; -fx-font-size:11px; -fx-font-weight:bold;
+    -fx-background-radius:6; -fx-padding:6 10 6 10; -fx-cursor:hand;
+    -fx-border-color:#cbd5e0; -fx-border-radius:6; -fx-border-width:1.2;
+}
+.btn-move:hover { -fx-background-color:#edf2f7; -fx-text-fill:#2d3748; }
+.btn-move:disabled { -fx-opacity:0.35; }
+
+
 .btn-pdf {
     -fx-background-color:#6b46c1; -fx-text-fill:white; -fx-font-size:12px; -fx-font-weight:bold;
     -fx-background-radius:6; -fx-padding:6 14 6 14; -fx-cursor:hand;

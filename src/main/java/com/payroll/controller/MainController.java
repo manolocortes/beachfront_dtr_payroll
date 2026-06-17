@@ -6,6 +6,7 @@ import com.payroll.service.PayrollPdfService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.*;
 import javafx.collections.transformation.FilteredList;
+import javafx.collections.transformation.SortedList;
 import javafx.fxml.*;
 import javafx.geometry.*;
 import javafx.scene.control.*;
@@ -137,6 +138,9 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dlg = dlg(isNew ? "New Project" : "Edit Project");
         GridPane g = grid();
         TextField fName = tf(p.getName()), fClient = tf(p.getClient()), fLoc = tf(p.getLocation());
+        fName.setPromptText("e.g. Riverside Apartments");
+        fClient.setPromptText("e.g. ABC Development Corp.");
+        fLoc.setPromptText("e.g. Quezon City");
         DatePicker dpS = new DatePicker(p.getStartDate()), dpE = new DatePicker(p.getEndDate());
         ComboBox<String> cbSt = new ComboBox<>(FXCollections.observableArrayList("ACTIVE","COMPLETED","ON_HOLD"));
         cbSt.setValue(nvl(p.getStatus(),"ACTIVE"));
@@ -282,7 +286,8 @@ public class MainController implements Initializable {
     }
 
     private void refreshWorkers() {
-        FilteredList<Worker> fl = new FilteredList<>(allWorkers);
+        SortedList<Worker> sorted = new SortedList<>(allWorkers, Comparator.comparingInt(Worker::getId));
+        FilteredList<Worker> fl = new FilteredList<>(sorted);
         Runnable f = () -> fl.setPredicate(w -> {
             boolean ok = showInactiveWorkers.isSelected() || w.isActive();
             String q = workerSearch.getText();
@@ -304,6 +309,9 @@ public class MainController implements Initializable {
         GridPane g = grid();
         TextField fName=tf(w.getName()), fPos=tf(w.getPosition()),
                   fRate=tf(w.getDailyRate()==0?"":String.valueOf(w.getDailyRate()));
+        fName.setPromptText("e.g. Juan Dela Cruz");
+        fPos.setPromptText("e.g. Carpenter, Mason, Laborer");
+        fRate.setPromptText("e.g. 650.00");
         CheckBox cbAct = new CheckBox("Active (available for payroll)"); cbAct.setSelected(isNew||w.isActive());
         g.addRow(0,lbl("Full Name*"),fName);
         g.addRow(1,lbl("Position"),fPos);
@@ -528,9 +536,9 @@ public class MainController implements Initializable {
             showInfo("Already Added", w.getName()+" is already on this payroll."); return;
         }
         PayrollEntry entry = new PayrollEntry(w.getId(),w.getName(),w.getPosition(),w.getDailyRate());
-        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.25)*100.0)/100.0);
+        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.30)*100.0)/100.0);
         currentEntries.add(entry);
-        attendanceContainer.getChildren().add(buildCard(entry));
+        attendanceContainer.getChildren().add(buildCard(entry, payrollPeriodStart.getValue()));
         refreshTotals();
         updateEmptyState();
     }
@@ -542,7 +550,7 @@ public class MainController implements Initializable {
     }
 
     /** Builds the per-worker attendance card with a friendly 7-day grid. */
-    private VBox buildCard(PayrollEntry entry) {
+    private VBox buildCard(PayrollEntry entry, LocalDate periodStart) {
         VBox card = new VBox(8);
         card.getStyleClass().add("attendance-card");
 
@@ -553,6 +561,25 @@ public class MainController implements Initializable {
         Label posLbl  = new Label(nvl(entry.getPosition(),"\u2014")); posLbl.getStyleClass().add("card-pos");
         Label rateLbl = new Label("\u20b1"+String.format("%,.2f",entry.getDailyRate())+" / day"); rateLbl.getStyleClass().add("card-rate");
         Region sp = new Region(); HBox.setHgrow(sp,Priority.ALWAYS);
+
+        Button upBtn = new Button("▲"); upBtn.getStyleClass().add("btn-move");
+        Button downBtn = new Button("▼"); downBtn.getStyleClass().add("btn-move");
+        upBtn.setTooltip(new javafx.scene.control.Tooltip("Move up"));
+        downBtn.setTooltip(new javafx.scene.control.Tooltip("Move down"));
+
+        upBtn.setOnAction(e -> {
+            int idx = currentEntries.indexOf(entry);
+            if (idx <= 0) return;
+            currentEntries.add(idx - 1, currentEntries.remove(idx));
+            attendanceContainer.getChildren().add(idx - 1, attendanceContainer.getChildren().remove(idx));
+        });
+        downBtn.setOnAction(e -> {
+            int idx = currentEntries.indexOf(entry);
+            if (idx < 0 || idx >= currentEntries.size() - 1) return;
+            currentEntries.add(idx + 1, currentEntries.remove(idx));
+            attendanceContainer.getChildren().add(idx + 1, attendanceContainer.getChildren().remove(idx));
+        });
+
         Button removeBtn = new Button("Remove"); removeBtn.getStyleClass().add("btn-danger-sm");
         removeBtn.setOnAction(e -> {
             if (!confirm("Remove " + entry.getWorkerName() + " from this payroll?")) return;
@@ -561,7 +588,7 @@ public class MainController implements Initializable {
             refreshTotals();
             updateEmptyState();
         });
-        header.getChildren().addAll(nameLbl, posLbl, rateLbl, sp, removeBtn);
+        header.getChildren().addAll(nameLbl, posLbl, rateLbl, sp, upBtn, downBtn, removeBtn);
 
         // Helper text
         Label helper = new Label("Check AM and/or PM for each day worked. Add overtime hours if applicable.");
@@ -575,18 +602,31 @@ public class MainController implements Initializable {
         grid.add(rowLbl("Afternoon (PM)"),  0, 2);
         grid.add(rowLbl("Overtime (hrs)"),  0, 3);
 
-        String[] dayLabels = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"};
+        String[] dayAbbr = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"};
         List<DayAttendance> days = entry.getDayAttendance();
 
         for (int d = 0; d < 7; d++) {
             DayAttendance da = days.get(d);
             int col = d + 1;
 
+            // Derive actual day name and date from periodStart if available
+            String dayLabelText;
+            String daySubText;
+            if (periodStart != null) {
+                LocalDate date = periodStart.plusDays(d);
+                int dowIndex = date.getDayOfWeek().getValue() - 1; // MON=0..SUN=6
+                dayLabelText = dayAbbr[dowIndex];
+                daySubText = date.format(java.time.format.DateTimeFormatter.ofPattern("MM/dd"));
+            } else {
+                dayLabelText = dayAbbr[d];
+                daySubText = "Day " + (d + 1);
+            }
+
             VBox dayHeader = new VBox(2);
             dayHeader.setAlignment(Pos.CENTER);
-            Label dayName = new Label(dayLabels[d]);
+            Label dayName = new Label(dayLabelText);
             dayName.getStyleClass().add("day-header");
-            Label dayNum = new Label("Day " + (d+1));
+            Label dayNum = new Label(daySubText);
             dayNum.getStyleClass().add("day-subheader");
             dayHeader.getChildren().addAll(dayName, dayNum);
             dayHeader.setMinWidth(76);
@@ -620,7 +660,7 @@ public class MainController implements Initializable {
         fullWeekBtn.setOnAction(e -> {
             for (int d = 0; d < 5; d++) { days.get(d).setAm(true); days.get(d).setPm(true); }
             entry.calculate();
-            attendanceContainer.getChildren().set(attendanceContainer.getChildren().indexOf(card), buildCard(entry));
+            attendanceContainer.getChildren().set(attendanceContainer.getChildren().indexOf(card), buildCard(entry, payrollPeriodStart.getValue()));
             refreshTotals();
         });
         Button clearBtn = new Button("Clear All");
@@ -628,7 +668,7 @@ public class MainController implements Initializable {
         clearBtn.setOnAction(e -> {
             for (DayAttendance da : days) { da.setAm(false); da.setPm(false); da.setOtHours(0); }
             entry.calculate();
-            attendanceContainer.getChildren().set(attendanceContainer.getChildren().indexOf(card), buildCard(entry));
+            attendanceContainer.getChildren().set(attendanceContainer.getChildren().indexOf(card), buildCard(entry, payrollPeriodStart.getValue()));
             refreshTotals();
         });
         quickActions.getChildren().addAll(fullWeekBtn, clearBtn);
@@ -690,6 +730,7 @@ public class MainController implements Initializable {
         p.setPreparedBy(payrollPreparedBy.getText().trim());
         p.setApprovedBy(payrollApprovedBy.getText().trim());
         p.setStatus(status); p.setTotalAmount(total);
+        for (int i = 0; i < currentEntries.size(); i++) currentEntries.get(i).setSortOrder(i);
         p.setEntries(List.copyOf(currentEntries));
         try {
             if (editingPayroll==null) { payrollDAO.insert(p); allPayrolls.add(0,p); editingPayroll=p; }
@@ -716,6 +757,7 @@ public class MainController implements Initializable {
         p.setPeriodStart(payrollPeriodStart.getValue()); p.setPeriodEnd(payrollPeriodEnd.getValue());
         p.setPayDate(payrollPayDate.getValue());
         p.setPreparedBy(payrollPreparedBy.getText().trim()); p.setApprovedBy(payrollApprovedBy.getText().trim());
+        for (int i = 0; i < currentEntries.size(); i++) currentEntries.get(i).setSortOrder(i);
         p.setEntries(List.copyOf(currentEntries));
         try { pdfService.generate(p, f.getAbsolutePath(), null); setStatus("PDF saved: "+f.getName()); showInfo("PDF Exported","Saved to:\n"+f.getAbsolutePath()); }
         catch (Exception e) { showError("Could Not Export PDF",e.getMessage()); }
@@ -781,7 +823,7 @@ public class MainController implements Initializable {
             payrollPreparedBy.setText(nvl(full.getPreparedBy())); payrollApprovedBy.setText(nvl(full.getApprovedBy()));
             currentEntries.clear(); currentEntries.addAll(full.getEntries());
             attendanceContainer.getChildren().clear();
-            currentEntries.forEach(e -> attendanceContainer.getChildren().add(buildCard(e)));
+            currentEntries.forEach(e -> attendanceContainer.getChildren().add(buildCard(e, payrollPeriodStart.getValue())));
             refreshTotals(); updateEmptyState();
             switchPane(payrollPane); btnPayroll.setSelected(true);
             setStatus("Editing payroll #"+full.getId());

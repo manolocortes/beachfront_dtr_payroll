@@ -15,6 +15,7 @@ public class PayrollEntry {
     private DoubleProperty  overtimeRate  = new SimpleDoubleProperty();
     private DoubleProperty  grossPay      = new SimpleDoubleProperty();
     private DoubleProperty  netPay        = new SimpleDoubleProperty();
+    private int sortOrder = 0;
 
     public PayrollEntry()  { initDays(); }
 
@@ -76,4 +77,7 @@ public class PayrollEntry {
     public double getNetPay()               { return netPay.get(); }
     public void   setNetPay(double v)       { netPay.set(v); }
     public DoubleProperty netPayProperty()  { return netPay; }
+
+    public int  getSortOrder()       { return sortOrder; }
+    public void setSortOrder(int v)  { sortOrder = v; }
 }
