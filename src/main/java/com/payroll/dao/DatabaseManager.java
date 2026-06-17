@@ -35,6 +35,8 @@ public class DatabaseManager {
 
             // Migrate older databases that may still have the old workers columns
             migrateWorkersTable(s);
+            // Add sort_order to project_workers if missing
+            migrateProjectWorkersSortOrder(s);
             // Add sort_order column to payroll_entries if missing (older DBs)
             migratePayrollEntriesSortOrder(s);
         }
@@ -54,6 +56,20 @@ public class DatabaseManager {
             s.execute("CREATE TABLE workers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, position TEXT, daily_rate REAL NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1)");
             s.execute("INSERT INTO workers (id,name,position,daily_rate,active) SELECT id,name,position,daily_rate,active FROM workers_old");
             s.execute("DROP TABLE workers_old");
+        }
+    }
+
+    /** Adds sort_order to project_workers if missing. */
+    private void migrateProjectWorkersSortOrder(Statement s) throws SQLException {
+        boolean hasCol = false;
+        try (ResultSet rs = s.executeQuery("PRAGMA table_info(project_workers)")) {
+            while (rs.next()) {
+                if ("sort_order".equals(rs.getString("name"))) { hasCol = true; break; }
+            }
+        }
+        if (!hasCol) {
+            s.execute("ALTER TABLE project_workers ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+            s.execute("UPDATE project_workers SET sort_order = worker_id");
         }
     }
 

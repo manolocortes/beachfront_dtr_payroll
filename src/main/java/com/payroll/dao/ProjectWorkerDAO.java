@@ -11,7 +11,7 @@ public class ProjectWorkerDAO {
     /** Returns all workers assigned to the given project, ordered by name. */
     public List<Worker> findWorkersForProject(int projectId) throws SQLException {
         List<Worker> list = new ArrayList<>();
-        String sql = "SELECT w.* FROM workers w JOIN project_workers pw ON w.id=pw.worker_id WHERE pw.project_id=? ORDER BY w.name";
+        String sql = "SELECT w.*, pw.sort_order FROM workers w JOIN project_workers pw ON w.id=pw.worker_id WHERE pw.project_id=? ORDER BY pw.sort_order ASC, w.name ASC";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, projectId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -36,17 +36,20 @@ public class ProjectWorkerDAO {
         return ids;
     }
 
-    /** Replaces the full set of assigned workers for a project. */
+    /** Replaces the full set of assigned workers for a project (Set version, unordered). */
     public void setAssignedWorkers(int projectId, Set<Integer> workerIds) throws SQLException {
+        setAssignedWorkersOrdered(projectId, new ArrayList<>(workerIds));
+    }
+
+    /** Replaces the assigned workers for a project preserving the given list order. */
+    public void setAssignedWorkersOrdered(int projectId, List<Integer> orderedIds) throws SQLException {
         try (PreparedStatement del = conn.prepareStatement("DELETE FROM project_workers WHERE project_id=?")) {
-            del.setInt(1, projectId);
-            del.executeUpdate();
+            del.setInt(1, projectId); del.executeUpdate();
         }
-        if (workerIds.isEmpty()) return;
-        try (PreparedStatement ins = conn.prepareStatement("INSERT INTO project_workers(project_id, worker_id) VALUES (?,?)")) {
-            for (int wid : workerIds) {
-                ins.setInt(1, projectId);
-                ins.setInt(2, wid);
+        if (orderedIds.isEmpty()) return;
+        try (PreparedStatement ins = conn.prepareStatement("INSERT INTO project_workers(project_id, worker_id, sort_order) VALUES (?,?,?)")) {
+            for (int i = 0; i < orderedIds.size(); i++) {
+                ins.setInt(1, projectId); ins.setInt(2, orderedIds.get(i)); ins.setInt(3, i);
                 ins.addBatch();
             }
             ins.executeBatch();

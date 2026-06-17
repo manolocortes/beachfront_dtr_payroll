@@ -6,6 +6,7 @@ public class Worker {
     private StringProperty  position  = new SimpleStringProperty();
     private DoubleProperty  dailyRate = new SimpleDoubleProperty();
     private BooleanProperty active    = new SimpleBooleanProperty(true);
+    private int sortOrder = 0;
     public Worker() {}
     public Worker(int id,String name,String position,double dailyRate,boolean active){
         this.id.set(id);this.name.set(name);this.position.set(position);
@@ -26,5 +27,7 @@ public class Worker {
     public boolean isActive()               { return active.get(); }
     public void    setActive(boolean v)     { active.set(v); }
     public BooleanProperty activeProperty() { return active; }
+    public int  getSortOrder()      { return sortOrder; }
+    public void setSortOrder(int v) { sortOrder = v; }
     @Override public String toString()      { return name.get(); }
 }
