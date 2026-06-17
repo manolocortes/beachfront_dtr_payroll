@@ -101,9 +101,13 @@ public class MainController implements Initializable {
     private void loadAll() {
         try {
             allWorkers.setAll(workerDAO.findAll());
+        } catch (SQLException e) { showError("Database Error", "workers: " + e.getMessage()); e.printStackTrace(); return; }
+        try {
             allProjects.setAll(projectDAO.findAll());
+        } catch (SQLException e) { showError("Database Error", "projects: " + e.getMessage()); e.printStackTrace(); return; }
+        try {
             allPayrolls.setAll(payrollDAO.findAll());
-        } catch (SQLException e) { showError("Database Error", e.getMessage()); }
+        } catch (SQLException e) { showError("Database Error", "payrolls: " + e.getMessage()); e.printStackTrace(); return; }
     }
 
     // -- Projects --------------------------------------------------------------
@@ -138,6 +142,9 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dlg = dlg(isNew ? "New Project" : "Edit Project");
         GridPane g = grid();
         TextField fName = tf(p.getName()), fClient = tf(p.getClient()), fLoc = tf(p.getLocation());
+        fName.setPromptText("e.g. Riverside Apartments");
+        fClient.setPromptText("e.g. ABC Development Corp.");
+        fLoc.setPromptText("e.g. Quezon City");
         DatePicker dpS = new DatePicker(p.getStartDate()), dpE = new DatePicker(p.getEndDate());
         ComboBox<String> cbSt = new ComboBox<>(FXCollections.observableArrayList("ACTIVE","COMPLETED","ON_HOLD"));
         cbSt.setValue(nvl(p.getStatus(),"ACTIVE"));
@@ -160,8 +167,8 @@ public class MainController implements Initializable {
             p.setLocation(fLoc.getText().trim()); p.setStartDate(dpS.getValue());
             p.setEndDate(dpE.getValue()); p.setStatus(cbSt.getValue()); p.setDescription(fDesc.getText().trim());
             try { if (isNew) { projectDAO.insert(p); allProjects.add(p); } else projectDAO.update(p);
-                projectTable.refresh(); refreshPayrollProjectCombo();
-                setStatus("Project saved: " + p.getName());
+                  projectTable.refresh(); refreshPayrollProjectCombo();
+                  setStatus("Project saved: " + p.getName());
             } catch (SQLException e) { showError("Could Not Save Project", e.getMessage()); }
         });
     }
@@ -192,10 +199,10 @@ public class MainController implements Initializable {
         // Assigned list preserves saved order; unassigned sorted by name
         ObservableList<Worker> assignedList = FXCollections.observableArrayList(alreadyAssigned);
         ObservableList<Worker> unassignedList = FXCollections.observableArrayList(
-                allWorkers.stream()
-                        .filter(w -> !assignedIds.contains(w.getId()))
-                        .sorted(Comparator.comparing(Worker::getName, String.CASE_INSENSITIVE_ORDER))
-                        .toList()
+            allWorkers.stream()
+                .filter(w -> !assignedIds.contains(w.getId()))
+                .sorted(Comparator.comparing(Worker::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList()
         );
 
         // ── Left panel: unassigned pool ───────────────────────────────────
@@ -209,7 +216,7 @@ public class MainController implements Initializable {
                 else {
                     setText(w.getName() + (w.isActive() ? "" : " [INACTIVE]"));
                     setTooltip(new javafx.scene.control.Tooltip(nvl(w.getPosition(),"") +
-                            "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
+                        "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
                 }
             }
         });
@@ -224,9 +231,9 @@ public class MainController implements Initializable {
                 if (empty || w == null) { setText(null); setGraphic(null); }
                 else {
                     setText((assignedList.indexOf(w) + 1) + ". " + w.getName() +
-                            (w.isActive() ? "" : " [INACTIVE]"));
+                        (w.isActive() ? "" : " [INACTIVE]"));
                     setTooltip(new javafx.scene.control.Tooltip(nvl(w.getPosition(),"") +
-                            "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
+                        "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
                 }
             }
         });
@@ -293,7 +300,7 @@ public class MainController implements Initializable {
 
         Dialog<ButtonType> dlg = dlg("Assign Workers — " + p.getName());
         dlg.setHeaderText("Assign workers to \"" + p.getName() + "\" and set their payroll order.\n" +
-                "Select workers on the left and click Add. Use ▲ ▼ to reorder the crew.");
+            "Select workers on the left and click Add. Use ▲ ▼ to reorder the crew.");
         dlg.getDialogPane().setContent(content);
         dlg.getDialogPane().setPrefWidth(600);
 
@@ -342,7 +349,10 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dlg = dlg(isNew ? "Add Worker" : "Edit Worker");
         GridPane g = grid();
         TextField fName=tf(w.getName()), fPos=tf(w.getPosition()),
-                fRate=tf(w.getDailyRate()==0?"":String.valueOf(w.getDailyRate()));
+                  fRate=tf(w.getDailyRate()==0?"":String.valueOf(w.getDailyRate()));
+        fName.setPromptText("e.g. Juan Dela Cruz");
+        fPos.setPromptText("e.g. Carpenter, Mason, Laborer");
+        fRate.setPromptText("e.g. 650.00");
         CheckBox cbAct = new CheckBox("Active (available for payroll)"); cbAct.setSelected(isNew||w.isActive());
         g.addRow(0,lbl("Full Name*"),fName);
         g.addRow(1,lbl("Position"),fPos);
@@ -360,7 +370,7 @@ public class MainController implements Initializable {
             w.setName(fName.getText().trim()); w.setPosition(fPos.getText().trim());
             w.setDailyRate(rate); w.setActive(cbAct.isSelected());
             try { if (isNew) { workerDAO.insert(w); allWorkers.add(w); } else workerDAO.update(w);
-                workerTable.refresh(); setStatus("Worker saved: " + w.getName());
+                  workerTable.refresh(); setStatus("Worker saved: " + w.getName());
             } catch (SQLException e) { showError("Could Not Save Worker", e.getMessage()); }
         });
     }
@@ -567,7 +577,7 @@ public class MainController implements Initializable {
             showInfo("Already Added", w.getName()+" is already on this payroll."); return;
         }
         PayrollEntry entry = new PayrollEntry(w.getId(),w.getName(),w.getPosition(),w.getDailyRate());
-        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.30)*100.0)/100.0);
+        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.25)*100.0)/100.0);
         currentEntries.add(entry);
         attendanceContainer.getChildren().add(buildCard(entry, payrollPeriodStart.getValue()));
         refreshTotals();
@@ -816,9 +826,9 @@ public class MainController implements Initializable {
             final Button vBtn=btn("View / Edit","btn-edit"), pBtn=btn("Export PDF","btn-pdf"), dBtn=btn("Delete","btn-danger");
             final HBox box = new HBox(6,vBtn,pBtn,dBtn);
             { box.setAlignment(Pos.CENTER);
-                vBtn.setOnAction(e -> loadPayrollForEdit(getTableView().getItems().get(getIndex())));
-                pBtn.setOnAction(e -> exportHistoryPdf(getTableView().getItems().get(getIndex())));
-                dBtn.setOnAction(e -> deletePayroll(getTableView().getItems().get(getIndex())));
+              vBtn.setOnAction(e -> loadPayrollForEdit(getTableView().getItems().get(getIndex())));
+              pBtn.setOnAction(e -> exportHistoryPdf(getTableView().getItems().get(getIndex())));
+              dBtn.setOnAction(e -> deletePayroll(getTableView().getItems().get(getIndex())));
             }
             @Override protected void updateItem(String item, boolean empty) { super.updateItem(item,empty); setGraphic(empty?null:box); }
         });
