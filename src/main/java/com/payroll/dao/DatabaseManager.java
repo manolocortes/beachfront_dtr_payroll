@@ -19,8 +19,19 @@ public class DatabaseManager {
     public void initialize() throws SQLException {
         connection = DriverManager.getConnection("jdbc:sqlite:" + DB_FILE);
         connection.createStatement().execute("PRAGMA foreign_keys = ON");
+        System.out.println("DB path: " + new File(DB_FILE).getAbsolutePath());
         createTables();
-        System.out.println("DB: " + new File(DB_FILE).getAbsolutePath());
+        // Print all columns in both tables for debug
+        try (ResultSet rs = connection.createStatement().executeQuery("PRAGMA table_info(project_workers)")) {
+            System.out.print("project_workers cols: ");
+            while (rs.next()) System.out.print(rs.getString("name") + " ");
+            System.out.println();
+        }
+        try (ResultSet rs = connection.createStatement().executeQuery("PRAGMA table_info(payroll_entries)")) {
+            System.out.print("payroll_entries cols: ");
+            while (rs.next()) System.out.print(rs.getString("name") + " ");
+            System.out.println();
+        }
     }
     public Connection getConnection() { return connection; }
     private void createTables() throws SQLException {
@@ -35,6 +46,8 @@ public class DatabaseManager {
 
             // Migrate older databases that may still have the old workers columns
             migrateWorkersTable(s);
+            // Add sort_order to project_workers if missing
+            migrateProjectWorkersSortOrder(s);
             // Add sort_order column to payroll_entries if missing (older DBs)
             migratePayrollEntriesSortOrder(s);
         }
@@ -57,6 +70,22 @@ public class DatabaseManager {
         }
     }
 
+    /** Adds sort_order to project_workers if missing. */
+    private void migrateProjectWorkersSortOrder(Statement s) throws SQLException {
+        boolean hasCol = false;
+        try (ResultSet rs = s.executeQuery("PRAGMA table_info(project_workers)")) {
+            while (rs.next()) {
+                if ("sort_order".equals(rs.getString("name"))) { hasCol = true; break; }
+            }
+        }
+        if (!hasCol) {
+            s.execute("PRAGMA foreign_keys = OFF");
+            s.execute("ALTER TABLE project_workers ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+            s.execute("UPDATE project_workers SET sort_order = worker_id");
+            s.execute("PRAGMA foreign_keys = ON");
+        }
+    }
+
     /** Adds sort_order column to payroll_entries if it does not exist yet. */
     private void migratePayrollEntriesSortOrder(Statement s) throws SQLException {
         boolean hasCol = false;
@@ -66,7 +95,9 @@ public class DatabaseManager {
             }
         }
         if (!hasCol) {
+            s.execute("PRAGMA foreign_keys = OFF");
             s.execute("ALTER TABLE payroll_entries ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0");
+            s.execute("PRAGMA foreign_keys = ON");
         }
     }
 

@@ -85,6 +85,14 @@ public class MainController implements Initializable {
         dbPathLabel.setText("Database: " + new File("payroll.db").getAbsolutePath());
         loadAll();
         showProjects();
+
+        // Rebuild attendance cards whenever the period start date changes
+        payrollPeriodStart.valueProperty().addListener((obs, oldDate, newDate) -> {
+            if (newDate == null || currentEntries.isEmpty()) return;
+            // Rebuild every card with the new period start so day headers update
+            attendanceContainer.getChildren().clear();
+            currentEntries.forEach(e -> attendanceContainer.getChildren().add(buildCard(e, newDate)));
+        });
     }
 
     // -- Navigation --------------------------------------------------------
@@ -101,9 +109,13 @@ public class MainController implements Initializable {
     private void loadAll() {
         try {
             allWorkers.setAll(workerDAO.findAll());
+        } catch (SQLException e) { showError("Database Error", "workers: " + e.getMessage()); e.printStackTrace(); return; }
+        try {
             allProjects.setAll(projectDAO.findAll());
+        } catch (SQLException e) { showError("Database Error", "projects: " + e.getMessage()); e.printStackTrace(); return; }
+        try {
             allPayrolls.setAll(payrollDAO.findAll());
-        } catch (SQLException e) { showError("Database Error", e.getMessage()); }
+        } catch (SQLException e) { showError("Database Error", "payrolls: " + e.getMessage()); e.printStackTrace(); return; }
     }
 
     // -- Projects --------------------------------------------------------------
@@ -138,9 +150,6 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dlg = dlg(isNew ? "New Project" : "Edit Project");
         GridPane g = grid();
         TextField fName = tf(p.getName()), fClient = tf(p.getClient()), fLoc = tf(p.getLocation());
-        fName.setPromptText("e.g. Riverside Apartments");
-        fClient.setPromptText("e.g. ABC Development Corp.");
-        fLoc.setPromptText("e.g. Quezon City");
         DatePicker dpS = new DatePicker(p.getStartDate()), dpE = new DatePicker(p.getEndDate());
         ComboBox<String> cbSt = new ComboBox<>(FXCollections.observableArrayList("ACTIVE","COMPLETED","ON_HOLD"));
         cbSt.setValue(nvl(p.getStatus(),"ACTIVE"));
@@ -163,8 +172,8 @@ public class MainController implements Initializable {
             p.setLocation(fLoc.getText().trim()); p.setStartDate(dpS.getValue());
             p.setEndDate(dpE.getValue()); p.setStatus(cbSt.getValue()); p.setDescription(fDesc.getText().trim());
             try { if (isNew) { projectDAO.insert(p); allProjects.add(p); } else projectDAO.update(p);
-                  projectTable.refresh(); refreshPayrollProjectCombo();
-                  setStatus("Project saved: " + p.getName());
+                projectTable.refresh(); refreshPayrollProjectCombo();
+                setStatus("Project saved: " + p.getName());
             } catch (SQLException e) { showError("Could Not Save Project", e.getMessage()); }
         });
     }
@@ -176,100 +185,136 @@ public class MainController implements Initializable {
     }
 
     /**
-     * Lets the user pick which workers are part of this project's regular crew.
-     * Assigned workers are auto-suggested when creating a new payroll for this project.
+     * Two-panel dialog: left = unassigned pool, right = assigned crew (orderable).
+     * Workers can be moved between panels and reordered within the assigned list.
      */
     private void openAssignWorkersDialog(Project p) {
-        Set<Integer> assigned;
-        try { assigned = projectWorkerDAO.findWorkerIdsForProject(p.getId()); }
-        catch (SQLException e) { showError("Could Not Load Assignments", e.getMessage()); return; }
+        List<Worker> alreadyAssigned;
+        Set<Integer> assignedIds;
+        try {
+            alreadyAssigned = projectWorkerDAO.findWorkersForProject(p.getId());
+            assignedIds = new HashSet<>(projectWorkerDAO.findWorkerIdsForProject(p.getId()));
+        } catch (SQLException e) { showError("Could Not Load Assignments", e.getMessage()); return; }
 
-        List<Worker> all = allWorkers.stream()
-                .sorted(Comparator.comparing(Worker::isActive, Comparator.reverseOrder())
-                        .thenComparing(Worker::getName, String.CASE_INSENSITIVE_ORDER))
-                .toList();
-
-        if (all.isEmpty()) {
+        if (allWorkers.isEmpty()) {
             showError("No Workers Available", "Add workers in the Workers tab first.");
             return;
         }
 
-        Dialog<ButtonType> dlg = dlg("Assign Workers \u2014 " + p.getName());
-        dlg.setHeaderText("Choose the regular crew for \"" + p.getName() + "\".\nThese workers will be suggested automatically when you create a payroll for this project.");
+        // Assigned list preserves saved order; unassigned sorted by name
+        ObservableList<Worker> assignedList = FXCollections.observableArrayList(alreadyAssigned);
+        ObservableList<Worker> unassignedList = FXCollections.observableArrayList(
+                allWorkers.stream()
+                        .filter(w -> !assignedIds.contains(w.getId()))
+                        .sorted(Comparator.comparing(Worker::getName, String.CASE_INSENSITIVE_ORDER))
+                        .toList()
+        );
 
-        TextField search = new TextField();
-        search.setPromptText("Search workers by name or position\u2026");
-        search.getStyleClass().add("search-field");
-
-        Map<Integer, CheckBox> checkboxes = new LinkedHashMap<>();
-        VBox listBox = new VBox(2);
-        for (Worker w : all) {
-            CheckBox cb = new CheckBox(w.getName() + "  \u2014  " + nvl(w.getPosition(),"No position")
-                    + "  (\u20b1" + String.format("%,.2f", w.getDailyRate()) + "/day)"
-                    + (w.isActive() ? "" : "  [INACTIVE]"));
-            cb.setSelected(assigned.contains(w.getId()));
-            cb.getStyleClass().add("checklist-item");
-            if (!w.isActive()) cb.getStyleClass().add("checklist-item-inactive");
-            checkboxes.put(w.getId(), cb);
-            listBox.getChildren().add(cb);
-        }
-
-        ScrollPane scroll = new ScrollPane(listBox);
-        scroll.setFitToWidth(true);
-        scroll.setPrefSize(440, 360);
-        scroll.getStyleClass().add("checklist-scroll");
-
-        // Live filter
-        search.textProperty().addListener((o,a,b) -> {
-            String q = b == null ? "" : b.toLowerCase().trim();
-            for (Worker w : all) {
-                CheckBox cb = checkboxes.get(w.getId());
-                boolean match = q.isEmpty()
-                        || w.getName().toLowerCase().contains(q)
-                        || (w.getPosition()!=null && w.getPosition().toLowerCase().contains(q));
-                cb.setVisible(match); cb.setManaged(match);
+        // ── Left panel: unassigned pool ───────────────────────────────────
+        ListView<Worker> poolView = new ListView<>(unassignedList);
+        poolView.getSelectionModel().setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE);
+        poolView.setPrefSize(230, 340);
+        poolView.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(Worker w, boolean empty) {
+                super.updateItem(w, empty);
+                if (empty || w == null) { setText(null); setGraphic(null); }
+                else {
+                    setText(w.getName() + (w.isActive() ? "" : " [INACTIVE]"));
+                    setTooltip(new javafx.scene.control.Tooltip(nvl(w.getPosition(),"") +
+                            "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
+                }
             }
         });
 
-        Label countLabel = new Label();
-        Runnable updateCount = () -> {
-            long c = checkboxes.values().stream().filter(CheckBox::isSelected).count();
-            countLabel.setText(c + " of " + all.size() + " selected");
-        };
-        checkboxes.values().forEach(cb -> cb.selectedProperty().addListener((o,a,b) -> updateCount.run()));
-        updateCount.run();
+        // ── Right panel: assigned crew (ordered) ──────────────────────────
+        ListView<Worker> crewView = new ListView<>(assignedList);
+        crewView.getSelectionModel().setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE);
+        crewView.setPrefSize(230, 340);
+        crewView.setCellFactory(lv -> new ListCell<>() {
+            @Override protected void updateItem(Worker w, boolean empty) {
+                super.updateItem(w, empty);
+                if (empty || w == null) { setText(null); setGraphic(null); }
+                else {
+                    setText((assignedList.indexOf(w) + 1) + ". " + w.getName() +
+                            (w.isActive() ? "" : " [INACTIVE]"));
+                    setTooltip(new javafx.scene.control.Tooltip(nvl(w.getPosition(),"") +
+                            "  ₱" + String.format("%,.2f", w.getDailyRate()) + "/day"));
+                }
+            }
+        });
+        // Refresh numbering on list change
+        assignedList.addListener((javafx.collections.ListChangeListener<Worker>) c -> crewView.refresh());
 
-        Button selectAllBtn = new Button("Select All");
-        selectAllBtn.getStyleClass().add("btn-link");
-        selectAllBtn.setOnAction(e -> checkboxes.values().forEach(cb -> { if (cb.isVisible()) cb.setSelected(true); }));
+        // ── Transfer buttons ──────────────────────────────────────────────
+        Button addBtn  = new Button("Add ►");  addBtn.getStyleClass().add("btn-secondary");
+        Button remBtn  = new Button("◄ Remove"); remBtn.getStyleClass().add("btn-secondary");
+        addBtn.setMaxWidth(Double.MAX_VALUE);
+        remBtn.setMaxWidth(Double.MAX_VALUE);
 
-        Button selectNoneBtn = new Button("Select None");
-        selectNoneBtn.getStyleClass().add("btn-link");
-        selectNoneBtn.setOnAction(e -> checkboxes.values().forEach(cb -> { if (cb.isVisible()) cb.setSelected(false); }));
+        addBtn.setOnAction(e -> {
+            new ArrayList<>(poolView.getSelectionModel().getSelectedItems()).forEach(w -> {
+                unassignedList.remove(w);
+                assignedList.add(w);
+            });
+        });
+        remBtn.setOnAction(e -> {
+            new ArrayList<>(crewView.getSelectionModel().getSelectedItems()).forEach(w -> {
+                assignedList.remove(w);
+                unassignedList.add(w);
+                FXCollections.sort(unassignedList, Comparator.comparing(Worker::getName, String.CASE_INSENSITIVE_ORDER));
+            });
+        });
 
-        Button activeOnlyBtn = new Button("Select Active Workers Only");
-        activeOnlyBtn.getStyleClass().add("btn-link");
-        activeOnlyBtn.setOnAction(e -> all.forEach(w -> checkboxes.get(w.getId()).setSelected(w.isActive())));
+        // ── Reorder buttons ───────────────────────────────────────────────
+        Button upBtn   = new Button("▲ Up");   upBtn.getStyleClass().add("btn-move");
+        Button downBtn = new Button("▼ Down"); downBtn.getStyleClass().add("btn-move");
+        upBtn.setMaxWidth(Double.MAX_VALUE);
+        downBtn.setMaxWidth(Double.MAX_VALUE);
 
-        HBox quickActions = new HBox(6, selectAllBtn, selectNoneBtn, activeOnlyBtn);
-        quickActions.setAlignment(Pos.CENTER_LEFT);
+        upBtn.setOnAction(e -> {
+            int idx = crewView.getSelectionModel().getSelectedIndex();
+            if (idx <= 0) return;
+            Worker w = assignedList.remove(idx);
+            assignedList.add(idx - 1, w);
+            crewView.getSelectionModel().select(idx - 1);
+        });
+        downBtn.setOnAction(e -> {
+            int idx = crewView.getSelectionModel().getSelectedIndex();
+            if (idx < 0 || idx >= assignedList.size() - 1) return;
+            Worker w = assignedList.remove(idx);
+            assignedList.add(idx + 1, w);
+            crewView.getSelectionModel().select(idx + 1);
+        });
 
-        HBox topRow = new HBox(10, search, countLabel);
-        topRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(search, Priority.ALWAYS);
+        VBox midButtons = new VBox(8, addBtn, remBtn, new Separator(), upBtn, downBtn);
+        midButtons.setAlignment(Pos.CENTER);
+        midButtons.setPadding(new Insets(0, 8, 0, 8));
 
-        VBox content = new VBox(10, topRow, quickActions, scroll);
+        Label poolLabel = new Label("Available Workers");
+        poolLabel.getStyleClass().add("section-label");
+        Label crewLabel = new Label("Assigned Crew (in payroll order)");
+        crewLabel.getStyleClass().add("section-label");
+
+        VBox leftPane  = new VBox(6, poolLabel, poolView);
+        VBox rightPane = new VBox(6, crewLabel, crewView);
+        HBox panels = new HBox(0, leftPane, midButtons, rightPane);
+        panels.setAlignment(Pos.CENTER);
+
+        VBox content = new VBox(12, panels);
         content.setPadding(new Insets(14));
-        content.setPrefWidth(480);
+
+        Dialog<ButtonType> dlg = dlg("Assign Workers — " + p.getName());
+        dlg.setHeaderText("Assign workers to \"" + p.getName() + "\" and set their payroll order.\n" +
+                "Select workers on the left and click Add. Use ▲ ▼ to reorder the crew.");
         dlg.getDialogPane().setContent(content);
+        dlg.getDialogPane().setPrefWidth(600);
 
         dlg.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
-            Set<Integer> selected = new HashSet<>();
-            checkboxes.forEach((id, cb) -> { if (cb.isSelected()) selected.add(id); });
+            List<Integer> orderedIds = assignedList.stream().map(Worker::getId).toList();
             try {
-                projectWorkerDAO.setAssignedWorkers(p.getId(), selected);
-                setStatus("Updated crew for " + p.getName() + ": " + selected.size() + " worker(s) assigned.");
+                projectWorkerDAO.setAssignedWorkersOrdered(p.getId(), orderedIds);
+                setStatus("Updated crew for " + p.getName() + ": " + orderedIds.size() + " worker(s) assigned.");
             } catch (SQLException e) { showError("Could Not Save Assignments", e.getMessage()); }
         });
     }
@@ -279,10 +324,13 @@ public class MainController implements Initializable {
         colWId.setCellValueFactory(d -> new SimpleStringProperty(String.valueOf(d.getValue().getId())));
         colWName.setCellValueFactory(d -> d.getValue().nameProperty());
         colWPosition.setCellValueFactory(d -> d.getValue().positionProperty());
-        colWRate.setCellValueFactory(d -> new SimpleStringProperty(String.format("\u20b1 %,.2f", d.getValue().getDailyRate())));
+        colWRate.setCellValueFactory(d -> javafx.beans.binding.Bindings.createStringBinding(
+                () -> String.format("\u20b1 %,.2f", d.getValue().getDailyRate()),
+                d.getValue().dailyRateProperty()));
         colWStatus.setCellValueFactory(d -> new SimpleStringProperty(d.getValue().isActive()?"ACTIVE":"INACTIVE"));
         colWStatus.setCellFactory(col -> new BadgeCell<>());
         colWActions.setCellFactory(col -> new ActionCell<>(w -> openWorkerDialog(w), w -> deleteWorker(w)));
+
     }
 
     private void refreshWorkers() {
@@ -308,10 +356,7 @@ public class MainController implements Initializable {
         Dialog<ButtonType> dlg = dlg(isNew ? "Add Worker" : "Edit Worker");
         GridPane g = grid();
         TextField fName=tf(w.getName()), fPos=tf(w.getPosition()),
-                  fRate=tf(w.getDailyRate()==0?"":String.valueOf(w.getDailyRate()));
-        fName.setPromptText("e.g. Juan Dela Cruz");
-        fPos.setPromptText("e.g. Carpenter, Mason, Laborer");
-        fRate.setPromptText("e.g. 650.00");
+                fRate=tf(w.getDailyRate()==0?"":String.valueOf(w.getDailyRate()));
         CheckBox cbAct = new CheckBox("Active (available for payroll)"); cbAct.setSelected(isNew||w.isActive());
         g.addRow(0,lbl("Full Name*"),fName);
         g.addRow(1,lbl("Position"),fPos);
@@ -328,8 +373,22 @@ public class MainController implements Initializable {
             if (rate < 0) { showError("Invalid Rate","Daily rate cannot be negative."); return; }
             w.setName(fName.getText().trim()); w.setPosition(fPos.getText().trim());
             w.setDailyRate(rate); w.setActive(cbAct.isSelected());
-            try { if (isNew) { workerDAO.insert(w); allWorkers.add(w); } else workerDAO.update(w);
-                  workerTable.refresh(); setStatus("Worker saved: " + w.getName());
+            try { if (isNew) { workerDAO.insert(w); allWorkers.add(w); } else {
+                workerDAO.update(w);
+                // Update rate on any open payroll entries for this worker
+                currentEntries.stream()
+                        .filter(e -> e.getWorkerId() == w.getId())
+                        .forEach(e -> { e.setDailyRate(w.getDailyRate());
+                            e.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.30)*100.0)/100.0);
+                            e.calculate(); });
+                if (!currentEntries.isEmpty()) {
+                    attendanceContainer.getChildren().clear();
+                    currentEntries.forEach(e -> attendanceContainer.getChildren().add(
+                            buildCard(e, payrollPeriodStart.getValue())));
+                    refreshTotals();
+                }
+            }
+                workerTable.refresh(); setStatus("Worker saved: " + w.getName());
             } catch (SQLException e) { showError("Could Not Save Worker", e.getMessage()); }
         });
     }
@@ -536,7 +595,7 @@ public class MainController implements Initializable {
             showInfo("Already Added", w.getName()+" is already on this payroll."); return;
         }
         PayrollEntry entry = new PayrollEntry(w.getId(),w.getName(),w.getPosition(),w.getDailyRate());
-        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.30)*100.0)/100.0);
+        entry.setOvertimeRate(Math.round((w.getDailyRate()/8.0*1.25)*100.0)/100.0);
         currentEntries.add(entry);
         attendanceContainer.getChildren().add(buildCard(entry, payrollPeriodStart.getValue()));
         refreshTotals();
@@ -734,7 +793,7 @@ public class MainController implements Initializable {
         p.setEntries(List.copyOf(currentEntries));
         try {
             if (editingPayroll==null) { payrollDAO.insert(p); allPayrolls.add(0,p); editingPayroll=p; }
-            else { payrollDAO.update(p); int i=allPayrolls.indexOf(p); if(i>=0) allPayrolls.set(i,p); }
+            else { payrollDAO.update(p); historyTable.refresh(); }
             String friendly = status.equals("DRAFT") ? "saved as a draft" : "finalized";
             setStatus("Payroll " + friendly + " \u2014 #" + p.getId());
             showInfo("Payroll Saved", "This payroll has been " + friendly + ".\n\nProject: " + p.getProjectName()
@@ -777,7 +836,9 @@ public class MainController implements Initializable {
         colHisProject.setCellValueFactory(d -> d.getValue().projectNameProperty());
         colHisPeriod.setCellValueFactory(d -> new SimpleStringProperty(fmt(d.getValue().getPeriodStart())+" \u2013 "+fmt(d.getValue().getPeriodEnd())));
         colHisPayDate.setCellValueFactory(d -> new SimpleStringProperty(fmt(d.getValue().getPayDate())));
-        colHisTotal.setCellValueFactory(d -> new SimpleStringProperty(String.format("\u20b1 %,.2f",d.getValue().getTotalAmount())));
+        colHisTotal.setCellValueFactory(d -> javafx.beans.binding.Bindings.createStringBinding(
+                () -> String.format("\u20b1 %,.2f", d.getValue().getTotalAmount()),
+                d.getValue().totalAmountProperty()));
         colHisPrepared.setCellValueFactory(d -> d.getValue().preparedByProperty());
         colHisStatus.setCellValueFactory(d -> d.getValue().statusProperty());
         colHisStatus.setCellFactory(col -> new BadgeCell<>());
@@ -785,9 +846,9 @@ public class MainController implements Initializable {
             final Button vBtn=btn("View / Edit","btn-edit"), pBtn=btn("Export PDF","btn-pdf"), dBtn=btn("Delete","btn-danger");
             final HBox box = new HBox(6,vBtn,pBtn,dBtn);
             { box.setAlignment(Pos.CENTER);
-              vBtn.setOnAction(e -> loadPayrollForEdit(getTableView().getItems().get(getIndex())));
-              pBtn.setOnAction(e -> exportHistoryPdf(getTableView().getItems().get(getIndex())));
-              dBtn.setOnAction(e -> deletePayroll(getTableView().getItems().get(getIndex())));
+                vBtn.setOnAction(e -> loadPayrollForEdit(getTableView().getItems().get(getIndex())));
+                pBtn.setOnAction(e -> exportHistoryPdf(getTableView().getItems().get(getIndex())));
+                dBtn.setOnAction(e -> deletePayroll(getTableView().getItems().get(getIndex())));
             }
             @Override protected void updateItem(String item, boolean empty) { super.updateItem(item,empty); setGraphic(empty?null:box); }
         });

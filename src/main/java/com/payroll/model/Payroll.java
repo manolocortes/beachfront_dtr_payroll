@@ -53,4 +53,5 @@ public class Payroll {
     public DoubleProperty totalAmountProperty(){ return totalAmount; }
     public List<PayrollEntry> getEntries()  { return entries; }
     public void setEntries(List<PayrollEntry> v){ entries = v; }
+
 }

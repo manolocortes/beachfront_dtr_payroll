@@ -84,8 +84,11 @@ public class PayrollPdfService {
     private static final float X_TOTAL_DAYS = 603.0f;
     private static final float X_TOTAL_OT   = 639.0f;
     private static final float X_RATE       = 659.0f;
-    private static final float X_AMOUNT     = 695.0f;
-    private static final float X_AMOUNT_RIGHT = 727.0f;  // right boundary of the AMOUNT column
+    private static final float X_AMOUNT      = 729.4f;   // center of AMOUNT column (691.7..767.0)
+    private static final float X_AMOUNT_RIGHT = 764.0f;  // right boundary of AMOUNT col minus 3pt padding
+
+    // Horizontal absence line inner padding (each side)
+    private static final float LINE_INSET = 3.0f;
 
     // ── Data row Y centers in display space (22 rows) ─────────────────────────
     private static final float[] ROW_Y = {
@@ -220,7 +223,7 @@ public class PayrollPdfService {
      * The center X for each day group is the midpoint of its AM and OT sub-columns.
      * If periodStart is null, falls back to bare day names only.
      */
-    private void writeDayHeaders(PdfCanvas c, PdfFont f, LocalDate periodStart) {
+    /*private void writeDayHeaders(PdfCanvas c, PdfFont f, LocalDate periodStart) {
         // Day-of-week order: MON=0 … SUN=6
         DayOfWeek[] order = {DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                 DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY};
@@ -239,6 +242,30 @@ public class PayrollPdfService {
                 label = DAY_NAMES[d] + "(" + date.format(DAY_DATE_FMT) + ")";
             } else {
                 label = DAY_NAMES[d];
+            }
+
+            putC(c, f, 10.5f, label, centerX, Y_DAY_HEADER, groupWidth);
+        }
+    }*/
+
+    private void writeDayHeaders(PdfCanvas c, PdfFont f, LocalDate periodStart) {
+        for (int d = 0; d < 7; d++) {
+            // Center X = midpoint of AM-center and OT-center for this day
+            float centerX = (DAY_COL_X[d][0] + DAY_COL_X[d][2]) / 2f;
+            // Total width spanning from left edge of AM cell to right edge of OT cell
+            float groupWidth = COL_X[d * 3 + 3] - COL_X[d * 3];
+
+            String label;
+            if (periodStart != null) {
+                // Find the date for this dynamic day slot starting from periodStart
+                LocalDate date = periodStart.plusDays(d);
+
+                // date.getDayOfWeek().getValue() returns 1 (MON) to 7 (SUN)
+                int dayOfWeekIndex = date.getDayOfWeek().getValue() - 1;
+
+                label = DAY_NAMES[dayOfWeekIndex] + "(" + date.format(DAY_DATE_FMT) + ")";
+            } else {
+                label = DAY_NAMES[d]; // Fallback if no period restriction is provided
             }
 
             putC(c, f, 10.5f, label, centerX, Y_DAY_HEADER, groupWidth);
@@ -284,26 +311,16 @@ public class PayrollPdfService {
                 boolean fullyAbsent = !am && !pm && !ot;
 
                 if (fullyAbsent) {
-                    // Find run of consecutive fully-absent days
-                    int runEnd = d;
-                    while (runEnd + 1 < dayCount) {
-                        DayAttendance next = days.get(runEnd + 1);
-                        if (!next.isAm() && !next.isPm() && next.getOtHours() <= 0) {
-                            runEnd++;
-                        } else {
-                            break;
-                        }
-                    }
-                    // Draw one horizontal line spanning from left edge of day d to right edge of day runEnd
-                    float lineX0 = COL_X[d * 3];           // display x: left edge of first absent day
-                    float lineX1 = COL_X[runEnd * 3 + 3];  // display x: right edge of last absent day
+                    // Draw one line spanning AM+PM+OT for this day only, with padding
+                    float lineX0 = COL_X[d * 3]     + LINE_INSET;
+                    float lineX1 = COL_X[d * 3 + 3] - LINE_INSET;
                     drawHorizLine(c, lineX0, lineX1, i);
-                    d = runEnd + 1;
+                    d++;
                 } else {
-                    // Partial absence: draw line in each missing sub-column individually
-                    if (!am) drawHorizLine(c, COL_X[d * 3],     COL_X[d * 3 + 1], i);
-                    if (!pm) drawHorizLine(c, COL_X[d * 3 + 1], COL_X[d * 3 + 2], i);
-                    // OT column absence: no mark needed (OT is optional, blank when 0)
+                    // Partial absence: draw line in each missing sub-column with padding
+                    if (!am) drawHorizLine(c, COL_X[d * 3]     + LINE_INSET, COL_X[d * 3 + 1] - LINE_INSET, i);
+                    if (!pm) drawHorizLine(c, COL_X[d * 3 + 1] + LINE_INSET, COL_X[d * 3 + 2] - LINE_INSET, i);
+                    if (!ot) drawHorizLine(c, COL_X[d * 3 + 2] + LINE_INSET, COL_X[d * 3 + 3] - LINE_INSET, i);
                     d++;
                 }
             }
@@ -323,8 +340,8 @@ public class PayrollPdfService {
             double tOT   = pageEntries.stream().mapToDouble(PayrollEntry::getOvertimeHours).sum();
             double tNet  = pageEntries.stream().mapToDouble(PayrollEntry::getNetPay).sum();
             put(c, bold, 10.5f,  "TOTAL",        12f,          ty);
-            putC(c, bold, 10.5f, fmtN(tDays),   X_TOTAL_DAYS, ty, 34f);
-            putC(c, bold, 10.5f, fmtN(tOT),     X_TOTAL_OT,   ty, 34f);
+            //putC(c, bold, 10.5f, fmtN(tDays),   X_TOTAL_DAYS, ty, 34f);
+            //putC(c, bold, 10.5f, fmtN(tOT),     X_TOTAL_OT,   ty, 34f);
             putR(c, bold, 10.5f, fmtM(tNet),    X_AMOUNT_RIGHT, ty);
         }
     }
