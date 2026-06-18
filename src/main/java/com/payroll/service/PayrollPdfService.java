@@ -476,7 +476,11 @@ public class PayrollPdfService {
 
     private String fmtN(double v) {
         if (v == 0) return "";
-        return (v == Math.floor(v)) ? String.valueOf((int) v) : String.format("%.1f", v);
+        if (v == Math.floor(v)) return String.valueOf((int) v);
+        // Show up to 3 decimal places, stripping trailing zeros (e.g. 0.875, 0.5)
+        String s = String.format("%.3f", v);
+        s = s.replaceAll("0+$", "").replaceAll("\\.$", "");
+        return s;
     }
 
     private String fmtM(double v) {

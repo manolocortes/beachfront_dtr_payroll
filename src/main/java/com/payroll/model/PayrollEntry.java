@@ -31,15 +31,17 @@ public class PayrollEntry {
     }
 
     public void calculate() {
-        double days = dayAttendance.stream().mapToDouble(DayAttendance::daysContribution).sum();
-        double otH  = dayAttendance.stream().mapToDouble(DayAttendance::getOtHours).sum();
+        double days  = dayAttendance.stream().mapToDouble(DayAttendance::effectiveDaysContribution).sum();
+        double otH   = dayAttendance.stream().mapToDouble(DayAttendance::getOtHours).sum();
         double gross = dailyRate.get() * days + otH * overtimeRate.get();
         grossPay.set(gross);
         netPay.set(gross);
     }
 
-    public double getDaysWorked()    { return dayAttendance.stream().mapToDouble(DayAttendance::daysContribution).sum(); }
-    public double getOvertimeHours() { return dayAttendance.stream().mapToDouble(DayAttendance::getOtHours).sum(); }
+    /** Effective days worked after undertime deductions. */
+    public double getDaysWorked()      { return dayAttendance.stream().mapToDouble(DayAttendance::effectiveDaysContribution).sum(); }
+    public double getOvertimeHours()   { return dayAttendance.stream().mapToDouble(DayAttendance::getOtHours).sum(); }
+    public double getUndertimeHours()  { return dayAttendance.stream().mapToDouble(DayAttendance::getUtHours).sum(); }
 
     public int    getId()              { return id.get(); }
     public void   setId(int v)         { id.set(v); }

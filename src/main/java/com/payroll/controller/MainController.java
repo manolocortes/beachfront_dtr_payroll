@@ -650,7 +650,7 @@ public class MainController implements Initializable {
         header.getChildren().addAll(nameLbl, posLbl, rateLbl, sp, upBtn, downBtn, removeBtn);
 
         // Helper text
-        Label helper = new Label("Check AM and/or PM for each day worked. Add overtime hours if applicable.");
+        Label helper = new Label("Check AM and/or PM for each day worked. Add overtime or undertime hours if applicable.");
         helper.getStyleClass().add("card-helper");
 
         // Attendance grid
@@ -660,6 +660,7 @@ public class MainController implements Initializable {
         grid.add(rowLbl("Morning (AM)"),    0, 1);
         grid.add(rowLbl("Afternoon (PM)"),  0, 2);
         grid.add(rowLbl("Overtime (hrs)"),  0, 3);
+        grid.add(rowLbl("Undertime (hrs)"), 0, 4);
 
         String[] dayAbbr = {"Mon","Tue","Wed","Thu","Fri","Sat","Sun"};
         List<DayAttendance> days = entry.getDayAttendance();
@@ -709,6 +710,13 @@ public class MainController implements Initializable {
             otSp.valueProperty().addListener((o,a,b) -> { da.setOtHours(b==null?0:b); entry.calculate(); refreshTotals(); updateTotals(card,entry); });
             GridPane.setHalignment(otSp, HPos.CENTER);
             grid.add(otSp, col, 3);
+
+            Spinner<Double> utSp = new Spinner<>(0.0,8.0,da.getUtHours(),0.5);
+            utSp.setEditable(true); utSp.setPrefWidth(76);
+            utSp.getStyleClass().add("ot-spinner");
+            utSp.valueProperty().addListener((o,a,b) -> { da.setUtHours(b==null?0:b); entry.calculate(); refreshTotals(); updateTotals(card,entry); });
+            GridPane.setHalignment(utSp, HPos.CENTER);
+            grid.add(utSp, col, 4);
         }
 
         // Quick action: mark whole week present
@@ -725,7 +733,7 @@ public class MainController implements Initializable {
         Button clearBtn = new Button("Clear All");
         clearBtn.getStyleClass().add("btn-link");
         clearBtn.setOnAction(e -> {
-            for (DayAttendance da : days) { da.setAm(false); da.setPm(false); da.setOtHours(0); }
+            for (DayAttendance da : days) { da.setAm(false); da.setPm(false); da.setOtHours(0); da.setUtHours(0); }
             entry.calculate();
             attendanceContainer.getChildren().set(attendanceContainer.getChildren().indexOf(card), buildCard(entry, payrollPeriodStart.getValue()));
             refreshTotals();
@@ -736,8 +744,9 @@ public class MainController implements Initializable {
         HBox totRow = new HBox(20); totRow.setAlignment(Pos.CENTER_RIGHT); totRow.getStyleClass().add("card-totals");
         Label dL = new Label("Days: 0");  dL.getStyleClass().add("card-total-lbl"); dL.setId("days");
         Label oL = new Label("Overtime: 0h"); oL.getStyleClass().add("card-total-lbl"); oL.setId("ot");
+        Label uL = new Label("Undertime: 0h"); uL.getStyleClass().add("card-total-lbl"); uL.setId("ut");
         Label nL = new Label("Pay: \u20b10.00");  nL.getStyleClass().add("card-total-net"); nL.setId("net");
-        totRow.getChildren().addAll(dL, oL, nL);
+        totRow.getChildren().addAll(dL, oL, uL, nL);
 
         card.getChildren().addAll(header, helper, grid, quickActions, totRow);
         entry.calculate(); updateTotals(card, entry);
@@ -757,8 +766,9 @@ public class MainController implements Initializable {
                 for (var child : hb.getChildren()) {
                     if (child instanceof Label l) {
                         switch (nvl(l.getId(),"")) {
-                            case "days" -> l.setText(String.format("Days: %.1f", e.getDaysWorked()));
+                            case "days" -> l.setText(String.format("Days: %.3f", e.getDaysWorked()));
                             case "ot"   -> l.setText(String.format("Overtime: %.1fh", e.getOvertimeHours()));
+                            case "ut"   -> l.setText(String.format("Undertime: %.1fh", e.getUndertimeHours()));
                             case "net"  -> l.setText(String.format("Pay: \u20b1%,.2f", e.getNetPay()));
                         }
                     }
@@ -855,6 +865,8 @@ public class MainController implements Initializable {
     }
 
     private void refreshHistory() {
+        try { allPayrolls.setAll(payrollDAO.findAll()); }
+        catch (SQLException e) { showError("Database Error", "Could not reload payrolls: " + e.getMessage()); }
         ObservableList<String> names = FXCollections.observableArrayList("All Projects");
         allProjects.forEach(p -> names.add(p.getName()));
         historyProjectFilter.setItems(names); historyProjectFilter.setValue("All Projects");

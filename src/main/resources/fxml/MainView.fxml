@@ -114,11 +114,11 @@
                     <HBox spacing="16">
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Prepared By" styleClass="form-label"/>
-                            <TextField fx:id="payrollPreparedBy" promptText="Your name…" maxWidth="Infinity"/>
+                            <TextField fx:id="payrollPreparedBy" maxWidth="Infinity"/>
                         </VBox>
                         <VBox spacing="4" HBox.hgrow="ALWAYS">
                             <Label text="Checked / Approved By" styleClass="form-label"/>
-                            <TextField fx:id="payrollApprovedBy" promptText="Supervisor's name…" maxWidth="Infinity"/>
+                            <TextField fx:id="payrollApprovedBy" maxWidth="Infinity"/>
                         </VBox>
                     </HBox>
                 </VBox>
